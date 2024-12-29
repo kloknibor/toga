@@ -180,3 +180,33 @@ class WebView(Widget):
 
         self.run_after_initialization(execute)
         return result
+    
+    def get_cookies(self, on_result):
+        """
+        Retrieve cookies asynchronously from the WebView.
+
+        :param on_result: Callback to handle the cookies.
+        """
+        cookies = []
+
+        def handle_cookie(cookie):
+            cookies.append({
+                "name": cookie.Name,
+                "value": cookie.Value,
+                "domain": cookie.Domain,
+                "path": cookie.Path,
+                "secure": cookie.IsSecure,
+                "http_only": cookie.IsHttpOnly,
+            })
+
+        def completion_handler():
+            # Call the provided callback with the collected cookies
+            on_result(cookies)
+
+        def enumerate_cookies(cookie_list):
+            for cookie in cookie_list:
+                handle_cookie(cookie)
+            completion_handler()
+
+        # Enumerate all cookies asynchronously
+        self.cookie_manager.GetCookiesAsync(self.get_url()).Completed += enumerate_cookies
