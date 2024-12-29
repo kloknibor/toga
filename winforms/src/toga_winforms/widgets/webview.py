@@ -189,7 +189,7 @@ class WebView(Widget):
 
     def get_cookies(self, on_result):
         """
-        Retrieve cookies asynchronously from the WebView.
+        Retrieve all cookies asynchronously from the WebView.
 
         :param on_result: Callback to handle the cookies.
         """
@@ -210,6 +210,11 @@ class WebView(Widget):
                     "path": cookie.Path,
                     "secure": cookie.IsSecure,
                     "http_only": cookie.IsHttpOnly,
+                    "expiration": (
+                        cookie.Expires.ToString("o")
+                        if cookie.IsSession is False
+                        else None
+                    ),
                 }
             )
 
@@ -224,8 +229,8 @@ class WebView(Widget):
             except Exception as e:
                 print("Error retrieving cookies:", e)
 
-        # Enumerate cookies asynchronously
+        # Enumerate all cookies asynchronously
         task_scheduler = TaskScheduler.FromCurrentSynchronizationContext()
-        self.cookie_manager.GetCookiesAsync(self.get_url()).ContinueWith(
+        self.cookie_manager.GetCookiesAsync(None).ContinueWith(
             Action[Task[List[CoreWebView2Cookie]]](completion_handler), task_scheduler
         )
