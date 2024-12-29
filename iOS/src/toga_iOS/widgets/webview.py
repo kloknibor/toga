@@ -1,4 +1,4 @@
-from rubicon.objc import objc_id, objc_method, objc_property, py_from_ns, ObjCClass
+from rubicon.objc import objc_id, objc_method, objc_property, py_from_ns
 from travertino.size import at_least
 
 from toga.widgets.webview import JavaScriptResult
@@ -78,29 +78,38 @@ class WebView(Widget):
 
         return result
 
-    def get_cookies(self, on_cookies):
-        """
-        Retrieve cookies asynchronously from the WebView's cookie store.
-        
-        :param on_cookies: A callback function to handle the retrieved cookies.
-        """
-        cookie_store = self.native.configuration.websiteDataStore.httpCookieStore
-        cookies = []
-
-        def completion_handler(cookie):
-            # Add the cookie to the list
-            cookies.append(py_from_ns(cookie))
-
-        def finalize_cookies():
-            # Pass the list of cookies to the callback
-            on_cookies(cookies)
-
-        # Enumerate all cookies in the cookie store
-        cookie_store.getAllCookiesWithCompletionHandler_(completion_handler)
-
-        # Call the final callback after fetching cookies
-        self.interface.app.interface.set_timeout(finalize_cookies, delay=0.1)
-
     def rehint(self):
         self.interface.intrinsic.width = at_least(self.interface._MIN_WIDTH)
         self.interface.intrinsic.height = at_least(self.interface._MIN_HEIGHT)
+
+    def get_cookies(self, on_result):
+        """
+        Retrieve all cookies asynchronously from the WebView.
+
+        :param on_result: Callback to handle the cookies.
+        """
+        cookies = []
+
+        def handle_cookie(cookie):
+            cookies.append(
+                {
+                    "name": str(cookie.name),
+                    "value": str(cookie.value),
+                    "domain": str(cookie.domain),
+                    "path": str(cookie.path),
+                    "secure": bool(cookie.isSecure),
+                    "http_only": bool(cookie.isHTTPOnly),
+                    "expiration": (
+                        cookie.expiresDate.description if cookie.expiresDate else None
+                    ),
+                }
+            )
+
+        def completion_handler(native_cookies):
+            for cookie in native_cookies:
+                handle_cookie(cookie)
+            on_result(cookies)
+
+        # Get all cookies asynchronously
+        cookie_store = self.native.configuration.websiteDataStore.httpCookieStore
+        cookie_store.getAllCookiesWithCompletionHandler_(completion_handler)
