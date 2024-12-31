@@ -91,34 +91,40 @@ class WebView(Widget):
         self.interface.intrinsic.width = at_least(self.interface._MIN_WIDTH)
         self.interface.intrinsic.height = at_least(self.interface._MIN_HEIGHT)
 
+
     def get_cookies(self, on_result):
         """
         Retrieve all cookies asynchronously from the WebView.
 
         :param on_result: Callback to handle the cookies.
         """
-        cookies = []
-
-        def handle_cookie(cookie):
-            cookies.append(
-                {
-                    "name": str(cookie.name),
-                    "value": str(cookie.value),
-                    "domain": str(cookie.domain),
-                    "path": str(cookie.path),
-                    "secure": bool(cookie.isSecure),
-                    "http_only": bool(cookie.isHTTPOnly),
-                    "expiration": (
-                        cookie.expiresDate.description if cookie.expiresDate else None
-                    ),
-                }
-            )
-
-        def completion_handler(native_cookies):
-            for cookie in native_cookies:
-                handle_cookie(cookie)
-            on_result(cookies)
-
-        # Access the cookie store and retrieve all cookies
         cookie_store = self.native.configuration.websiteDataStore.httpCookieStore
-        cookie_store.getAllCookiesWithCompletionHandler_(completion_handler)
+
+        def cookies_callback(cookies: objc_id) -> None:
+            # Convert the cookies from Objective-C to Python objects
+            cookies_array = py_from_ns(cookies)
+
+            # Structure the cookies as a list of dictionaries
+            structured_cookies = []
+            for cookie in cookies_array:
+                structured_cookies.append(
+                    {
+                        "name": str(cookie.name),
+                        "value": str(cookie.value),
+                        "domain": str(cookie.domain),
+                        "path": str(cookie.path),
+                        "secure": bool(cookie.isSecure),
+                        "http_only": bool(cookie.isHTTPOnly),
+                        "expiration": (
+                            cookie.expiresDate.description
+                            if cookie.expiresDate
+                            else None
+                        ),
+                    }
+                )
+
+            # Pass the structured cookies to the provided callback
+            on_result(structured_cookies)
+
+        # Call the method to retrieve all cookies
+        cookie_store.getAllCookies_(cookies_callback)
